@@ -1,27 +1,21 @@
 import runpod
-from llama_cpp import Llama
+from vllm import LLM, SamplingParams
 
-# Chargement du modèle au démarrage du conteneur
-print("Chargement du modèle Qwen 30B...")
-llm = Llama(
-    model_path="Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf",
-    n_gpu_layers=-1,
-    n_ctx=4096
-)
+# Chargement du modèle au démarrage (plus rapide en FP8)
+llm = LLM(model="/app/model", quantization="fp8", gpu_memory_utilization=0.90)
 
-def handler(event):
-    # Récupérer le prompt envoyé par l'utilisateur
-    job_input = event["input"]
+def handler(job):
+    job_input = job['input']
     prompt = job_input.get("prompt", "Hello")
     max_tokens = job_input.get("max_tokens", 1000)
+    temperature = job_input.get("temperature", 0.7)
 
+    sampling_params = SamplingParams(temperature=temperature, max_tokens=max_tokens)
+    
     # Génération
-    output = llm(
-        f"User: {prompt}\nAssistant:",
-        max_tokens=max_tokens,
-        stop=["User:"]
-    )
-
-    return output["choices"][0]["text"]
+    outputs = llm.generate([prompt], sampling_params)
+    
+    # On renvoie le texte
+    return outputs[0].outputs[0].text
 
 runpod.serverless.start({"handler": handler})
