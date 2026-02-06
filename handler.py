@@ -1,25 +1,37 @@
 import runpod
+import os
 from vllm import LLM, SamplingParams
 
-# IMPORTANT : Le chemin pointe vers ton Network Volume
+# On force Python à vider les logs immédiatement
+os.environ["PYTHONUNBUFFERED"] = "1"
+
+print("--- INITIALISATION DU WORKER ---")
+
 MODEL_PATH = "/models/qwen3-fp8"
 
-# On charge le modèle (vLLM va le chercher dans le volume branché)
-llm = LLM(
-    model=MODEL_PATH, 
-    quantization="fp8", 
-    gpu_memory_utilization=0.90, # Laisse un peu de place pour le système
-    enforce_eager=True # Aide à la stabilité sur RunPod
-)
+# On baisse l'utilisation à 0.85 (soit 85% de la VRAM) 
+# pour laisser 3.6 Go de libre pour le système et éviter le freeze.
+try:
+    print(f"Chargement du modèle : {MODEL_PATH}...")
+    llm = LLM(
+        model=MODEL_PATH,
+        quantization="fp8",
+        gpu_memory_utilization=0.85, 
+        enforce_eager=True,
+        max_model_len=4096
+    )
+    print("--- MODÈLE CHARGÉ AVEC SUCCÈS ---")
+except Exception as e:
+    print(f"ERREUR DURANT LE CHARGEMENT : {e}")
 
 def handler(job):
+    print(f"Nouveau job reçu : {job['id']}")
     job_input = job['input']
     prompt = job_input.get("prompt", "")
     
     sampling_params = SamplingParams(
         temperature=job_input.get("temperature", 0.7),
         max_tokens=job_input.get("max_tokens", 2000),
-        top_p=0.95
     )
     
     outputs = llm.generate([prompt], sampling_params)
