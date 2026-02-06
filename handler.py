@@ -38,3 +38,4 @@ def handler(job):
     return outputs[0].outputs[0].text
 
 runpod.serverless.start({"handler": handler})
+
