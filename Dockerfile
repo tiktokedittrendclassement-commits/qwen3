@@ -1,33 +1,19 @@
-# Utiliser une image CUDA stable
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
 
-# Éviter les questions interactives lors de l'installation
 ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y python3 python3-pip git wget && rm -rf /var/lib/apt/lists/*
 
-# Installation de Python, wget, outils de build ET nano
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    wget \
-    nano \
-    git \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Installation de llama-cpp-python avec support GPU (RTX 4090)
-ENV CMAKE_ARGS="-DGGML_CUDA=on"
+# Installation de vLLM (le moteur ultra-rapide pour FP8)
 RUN pip3 install --upgrade pip
-RUN pip3 install llama-cpp-python runpod
+RUN pip3 install vllm runpod huggingface_hub
 
 WORKDIR /app
 
-# Téléchargement du modèle (Optionnel si tu utilises un volume réseau, 
-# mais obligatoire si tu veux une image "tout-en-un")
-RUN wget https://huggingface.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF/resolve/main/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf
+# Téléchargement du modèle FP8 depuis Hugging Face
+# On utilise huggingface-cli pour télécharger tout le dossier
+RUN python3 -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8', local_dir='/app/model')"
 
-# Copier tes scripts
 COPY handler.py .
-COPY chat.py . 
 
-# Lancer le handler serverless par défaut
+# On lance le handler
 CMD ["python3", "-u", "handler.py"]
