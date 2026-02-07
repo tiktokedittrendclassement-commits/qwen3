@@ -27,4 +27,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/qwen3-coder-serverless:latest
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/qwen3-coder-serverless:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/qwen3-coder-serverless:v1
