@@ -1,13 +1,23 @@
-# On utilise l'image officielle vLLM déjà optimisée
+# Utilisation d'une image optimisée pour vLLM
 FROM vllm/vllm-openai:latest
 
-# On installe juste runpod pour faire le lien avec ton SaaS
-RUN pip install runpod
+# Métadonnées de version
+LABEL version="1.0"
+LABEL maintainer="TonPseudo"
+LABEL description="Qwen3-Coder Serverless V1 - vLLM"
 
-WORKDIR /app
+# Installation du SDK Runpod (vLLM est déjà dans l'image de base)
+RUN pip install --no-cache-dir runpod
 
-# On copie ton handler qui va piloter l'IA
-COPY handler.py .
+# Variables d'environnement pour Python
+ENV PYTHONUNBUFFERED=1
+ENV HF_HOME=/workspace/.cache/huggingface
 
-# On lance le service
-CMD ["python3", "-u", "handler.py"]
+# Copie du handler
+COPY handler.py /handler.py
+
+# On expose le port par défaut (optionnel en serverless mais propre)
+EXPOSE 8000
+
+# Commande de lancement
+CMD ["python", "-u", "/handler.py"]
