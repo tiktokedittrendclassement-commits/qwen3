@@ -1,14 +1,15 @@
-FROM vllm/vllm-openai:latest
+# Utilisation d'une version spécifique pour éviter les erreurs de driver CUDA
+FROM vllm/vllm-openai:v0.7.2
 
-# Métadonnées
-LABEL version="1.1"
+LABEL version="1.2"
+LABEL description="Qwen3-Coder Serverless - Fixed CUDA Compatibility"
 
+# Installation du SDK RunPod
 RUN pip install --no-cache-dir runpod
 
-# On force l'ENTRYPOINT à python pour qu'il ignore la commande par défaut de vLLM
-ENTRYPOINT ["python", "-u"]
-
-# On lui dit quel fichier lancer
-CMD ["/handler.py"]
-
+# Copie du script handler
 COPY handler.py /handler.py
+
+# Force l'utilisation de Python pour éviter que vLLM ne lance son propre serveur
+ENTRYPOINT ["python", "-u"]
+CMD ["/handler.py"]
