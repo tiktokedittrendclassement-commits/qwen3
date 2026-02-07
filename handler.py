@@ -2,28 +2,24 @@ import runpod
 from vllm import LLM, SamplingParams
 import os
 
-# CONFIGURATION SÉCURISÉE
-# On interdit à vLLM de tenter des téléchargements externes
+# Configuration environnement
 os.environ["HF_HUB_OFFLINE"] = "1"
-# Chemin vérifié via ta commande 'find'
 MODEL_PATH = "/workspace/Qwen3-Coder-FP8"
 
-print("--- [STARTUP] Initialisation du worker Qwen3 ---")
+print("--- DÉMARRAGE DU WORKER TEST ---")
 
 try:
-    print(f"--- [vLLM] Chargement local depuis {MODEL_PATH} ---")
-    # Initialisation avec Tensor Parallelism pour tes 2 GPUs
     llm = LLM(
         model=MODEL_PATH,
-        tensor_parallel_size=2,      # Obligatoire : utilise 2 GPUs
+        tensor_parallel_size=2, # Assure-toi d'avoir séléctionné 2 GPUs sur RunPod
         trust_remote_code=True,
-        gpu_memory_utilization=0.85, # Marge de sécurité pour la VRAM
-        max_model_len=8192,          # Limite le contexte pour la stabilité
-        enforce_eager=True           # Aide parfois à la compatibilité driver
+        gpu_memory_utilization=0.85,
+        max_model_len=8192,
+        enforce_eager=True
     )
-    print("--- [SUCCESS] Modèle chargé et prêt sur 2 GPUs ! ---")
+    print("--- MODÈLE CHARGÉ AVEC SUCCÈS ---")
 except Exception as e:
-    print(f"--- [ERROR] Échec du chargement : {str(e)} ---")
+    print(f"--- ERREUR : {str(e)} ---")
     raise e
 
 def handler(job):
@@ -32,24 +28,16 @@ def handler(job):
         prompt = job_input.get("prompt")
         
         if not prompt:
-            return {"error": "Champ 'prompt' manquant dans 'input'."}
+            return {"error": "Prompt vide"}
 
-        # Configuration de la réponse
         sampling_params = SamplingParams(
             temperature=job_input.get("temperature", 0.3),
-            max_tokens=job_input.get("max_tokens", 2000),
-            top_p=job_input.get("top_p", 0.95),
-            repetition_penalty=1.1
+            max_tokens=job_input.get("max_tokens", 1000)
         )
 
-        # Génération
         outputs = llm.generate([prompt], sampling_params)
-        result = outputs[0].outputs[0].text
-
-        return {"output": result}
-
+        return {"output": outputs[0].outputs[0].text}
     except Exception as e:
-        return {"error": f"Erreur de génération : {str(e)}"}
+        return {"error": str(e)}
 
-# Lancement du service RunPod
 runpod.serverless.start({"handler": handler})
