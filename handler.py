@@ -1,43 +1,42 @@
-import runpod
-from vllm import LLM, SamplingParams
 import os
+import sys
 
-# Configuration environnement
+# DEBUG : Affiche les infos système dès le début
+print(f"--- DEBUG SYSTÈME ---")
+print(f"Python version: {sys.version}")
+print(f"Current directory: {os.getcwd()}")
+print(f"Files in root: {os.listdir('/')}")
+
+try:
+    import runpod
+    from vllm import LLM, SamplingParams
+    print("--- Imports réussis ---")
+except ImportError as e:
+    print(f"--- ERREUR IMPORT : {str(e)} ---")
+    sys.exit(1)
+
+# Configuration vLLM
 os.environ["HF_HUB_OFFLINE"] = "1"
 MODEL_PATH = "/workspace/Qwen3-Coder-FP8"
 
-print("--- DÉMARRAGE DU WORKER TEST ---")
-
 try:
+    print(f"--- Tentative de chargement du modèle : {MODEL_PATH} ---")
     llm = LLM(
         model=MODEL_PATH,
-        tensor_parallel_size=2, # Assure-toi d'avoir séléctionné 2 GPUs sur RunPod
+        tensor_parallel_size=2,
         trust_remote_code=True,
         gpu_memory_utilization=0.85,
-        max_model_len=8192,
+        max_model_len=4096, # On baisse un peu pour le test
         enforce_eager=True
     )
     print("--- MODÈLE CHARGÉ AVEC SUCCÈS ---")
 except Exception as e:
-    print(f"--- ERREUR : {str(e)} ---")
-    raise e
+    print(f"--- ERREUR CHARGEMENT MODÈLE : {str(e)} ---")
+    # On ne fait pas de raise ici pour laisser le worker afficher l'erreur
+    sys.exit(1)
 
 def handler(job):
-    try:
-        job_input = job.get('input', {})
-        prompt = job_input.get("prompt")
-        
-        if not prompt:
-            return {"error": "Prompt vide"}
-
-        sampling_params = SamplingParams(
-            temperature=job_input.get("temperature", 0.3),
-            max_tokens=job_input.get("max_tokens", 1000)
-        )
-
-        outputs = llm.generate([prompt], sampling_params)
-        return {"output": outputs[0].outputs[0].text}
-    except Exception as e:
-        return {"error": str(e)}
+    # Ton code de handler habituel
+    return {"output": "Test réussi"}
 
 runpod.serverless.start({"handler": handler})
